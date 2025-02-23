@@ -10,7 +10,7 @@ An easy library to handle stream objects (TcpStream, TlsStream, etc) transferrin
 let listener = TcpListener::bind("addr");
 
 for stream in listener.incoming() {
-    if let Ok(req) = lazyhttp::handle_stream(stream) {
+    if let Ok(req) = lazyhttp::handle_stream(&stream) {
         // Do something with req
     }
 }

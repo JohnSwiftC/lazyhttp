@@ -4,8 +4,8 @@ use std::error::Error;
 
 
 
-pub fn handle_stream<T>(stream: T) -> Result<LazyRequest, Box<dyn Error + Send + Sync + 'static>> where for<'a> &'a T: std::io::Read{
-    let mut buf_reader = BufReader::new(&stream);
+pub fn handle_stream<T>(stream: &T) -> Result<LazyRequest, Box<dyn Error + Send + Sync + 'static>> where for<'a> &'a T: std::io::Read{
+    let mut buf_reader = BufReader::new(stream);
 
     let mut line_buf = String::new();
 
