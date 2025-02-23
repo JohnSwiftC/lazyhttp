@@ -4,6 +4,14 @@ An easy library to handle stream objects (TcpStream, TlsStream, etc) transferrin
 
 > This library does not handle networking or responding. This is really intended to remove a snippet of code that I find myself copying and pasting over and over again.
 
-# Usage
+# Example
 
-See my crates.io once I publish. 
+{% highlight rust %}
+let listener = TcpListener::bind("addr");
+
+for stream in listener.incoming() {
+    if let Ok(req) = lazyhttp::handle_stream(stream) {
+        // Do something with req
+    }
+}
+{% endhighlight %}
