@@ -6,7 +6,7 @@ An easy library to handle stream objects (TcpStream, TlsStream, etc) transferrin
 
 # Example
 
-{% highlight rust %}
+```rust
 let listener = TcpListener::bind("addr");
 
 for stream in listener.incoming() {
@@ -14,4 +14,4 @@ for stream in listener.incoming() {
         // Do something with req
     }
 }
-{% endhighlight %}
+```
