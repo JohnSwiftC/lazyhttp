@@ -1,10 +1,11 @@
-use std::collections::{HashMap};
-use std::io::{Read, BufReader, BufRead};
+use std::collections::HashMap;
 use std::error::Error;
+use std::io::{BufRead, BufReader, Read};
 
-
-
-pub fn handle_stream<T>(stream: &T) -> Result<LazyRequest, Box<dyn Error + Send + Sync + 'static>> where for<'a> &'a T: std::io::Read{
+pub fn handle_stream<T>(stream: &T) -> Result<Request, Box<dyn Error + Send + Sync + 'static>>
+where
+    for<'a> &'a T: std::io::Read,
+{
     let mut buf_reader = BufReader::new(stream);
 
     let mut line_buf = String::new();
@@ -45,34 +46,30 @@ pub fn handle_stream<T>(stream: &T) -> Result<LazyRequest, Box<dyn Error + Send 
     let body;
 
     if let Some(length) = headers.get("Content-Length") {
-
-        let mut bytes = vec![
-            0_u8;
-            length.parse().expect("Bad Content Length Header")
-        ];
+        let mut bytes = vec![0_u8; length.parse().expect("Bad Content Length Header")];
 
         buf_reader
             .read_exact(&mut bytes)
             .expect("Failed to read content!");
 
         body = Some(String::from_utf8(bytes).expect("Invalid String!"));
-
     } else {
         body = None;
     }
 
-    Ok(LazyRequest {
+    Ok(Request {
         method: method,
         route: request_parts.swap_remove(1).to_string(),
+        version: request_parts.pop().unwrap().to_string(),
         headers: headers,
-        body: body
+        body: body,
     })
 }
 
-pub struct LazyRequest {
+pub struct Request {
     pub method: String,
     pub route: String,
+    pub version: String,
     pub headers: HashMap<String, String>,
-    pub body: Option<String>
+    pub body: Option<String>,
 }
-
