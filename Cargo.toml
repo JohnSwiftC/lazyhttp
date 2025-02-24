@@ -1,9 +1,9 @@
 [package]
 name = "lazyhttp"
-version = "0.1.0"
+version = "1.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "A simple HTTP library to handle common stream objects (TcpStream, TlsStream, etc) sending HTTP data. This library is very simple and is intended to make reading raw HTTP less repeitive, and as such it does not handle responding or networking."
+description = "A simple HTTP library to handle common stream objects (TcpStream, TlsStream, etc) sending HTTP data. This library is very simple and is intended to make reading raw HTTP less repetitive, and as such it does not handle responding or networking."
 repository = "https://github.com/JohnSwiftC/lazyhttp"
 readme = "README.md"
 keywords = ["http", "requests", "synchronous"]
