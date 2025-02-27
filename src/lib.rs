@@ -73,3 +73,35 @@ pub struct Request {
     pub headers: HashMap<String, String>,
     pub body: Option<String>,
 }
+
+impl Request {
+    /// Outputs a new owned string of the full request.
+    pub fn as_text(&self) -> String{
+        match &self.body {
+            Some(body) => {
+                let mut r = String::new();
+                r.push_str(&format!("{} {} {}\r\n", self.method, self.route, self.version));
+                for (k , v) in &self.headers {
+                    r.push_str(&format!("{}: {}\r\n", k, v));
+                }
+
+                r.push_str("\r\n");
+                r.push_str(&body);
+                r.push_str("\r\n");
+
+                r
+            }
+            None => {
+                let mut r = String::new();
+                r.push_str(&format!("{} {} {}\r\n", self.method, self.route, self.version));
+                for (k , v) in &self.headers {
+                    r.push_str(&format!("{}: {}\r\n", k, v));
+                }
+
+                r.push_str("\r\n");
+
+                r
+            }
+        }
+    }
+}
