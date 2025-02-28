@@ -87,7 +87,6 @@ impl Request {
 
                 r.push_str("\r\n");
                 r.push_str(&body);
-                r.push_str("\r\n");
 
                 r
             }
@@ -103,5 +102,43 @@ impl Request {
                 r
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_as_text_body() {
+        let mut headers = HashMap::new();
+        headers.insert("Test".into(), "Value".into());
+
+        let req = Request {
+            method: "POST".to_string(),
+            route: "/".to_string(),
+            version: "HTTP/1".to_string(),
+            headers: headers,
+            body: Some("My body".into()),
+        };
+
+        assert_eq!(req.as_text(), "POST / HTTP/1\r\nTest: Value\r\n\r\nMy body");
+    }
+
+    #[test]
+    fn test_as_text() {
+        let mut headers = HashMap::new();
+        headers.insert("Test".into(), "Value".into());
+
+        let req = Request {
+            method: "POST".to_string(),
+            route: "/".to_string(),
+            version: "HTTP/1".to_string(),
+            headers: headers,
+            body: None,
+        };
+
+        assert_eq!(req.as_text(), "POST / HTTP/1\r\nTest: Value\r\n\r\n");
+
     }
 }
