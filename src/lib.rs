@@ -3,9 +3,7 @@ use std::io::{BufRead, BufReader, Read};
 use http::Request;
 use http::Version;
 
-/// Returns a http::Request<T> struct. The type T is the type of the body, which is an
-/// `Option<String>`
-///
+/// Returns a http::Request\<Option\<String\>\> struct.
 /// A body will only be included in the Request if it is sent with the proper `Content-Length`
 /// header.
 pub fn handle_stream<T>(stream: &T) -> Result<Request<Option<String>>, Box<dyn Error + Send + Sync + 'static>>
