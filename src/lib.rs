@@ -1,36 +1,50 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::io::{BufRead, BufReader, Read};
+use http::Request;
+use http::Version;
 
-pub fn handle_stream<T>(stream: &T) -> Result<Request, Box<dyn Error + Send + Sync + 'static>>
+pub fn handle_stream<T>(stream: &T) -> Result<Request<Option<String>>, Box<dyn Error + Send + Sync + 'static>>
 where
     for<'a> &'a T: std::io::Read,
 {
+
+    let mut request = Request::builder();
+
     let mut buf_reader = BufReader::new(stream);
-
     let mut line_buf = String::new();
+    let mut content_length: Option<usize> = None;
 
-    if let Err(_) = buf_reader.read_line(&mut line_buf) {
-        panic!("Bad Request");
-    }
+    buf_reader.read_line(&mut line_buf)?;
 
-    let mut request_parts: Vec<&str> = line_buf.split_whitespace().collect();
+    let request_parts: Vec<&str> = line_buf.split_whitespace().collect();
 
     // We only want POST requests being made
 
-    let method = match request_parts.get(0) {
-        Some(method) => method.to_string(),
-        None => panic!("No request method"),
+    match request_parts.get(0) {
+        Some(method) => {
+            request = request.method(*method);
+        }, 
+        None => return Err("No Request Method Specified".into()),
     };
 
-    let mut headers = HashMap::new();
+    match request_parts.get(1) {
+        Some(uri) => {
+            request = request.uri(*uri);
+        },
+        None => return Err("No Request URI Specified".into()),
+    }
+
+    match request_parts.get(2) {
+        Some(v_str) => {
+            request = request.version(parse_version(v_str));
+        },
+        None => return Err("No HTTP Version Specified".into()),
+    }
 
     loop {
         let mut line_buf = String::new();
 
-        if let Err(_) = buf_reader.read_line(&mut line_buf) {
-            panic!("Bad Request");
-        }
+        buf_reader.read_line(&mut line_buf)?;
 
         if line_buf.is_empty() || line_buf == "\n" || line_buf == "\r\n" {
             break;
@@ -40,105 +54,61 @@ where
         let key = comps.next().unwrap_or("None");
         let value = comps.next().unwrap_or("None").trim();
 
-        headers.insert(key.to_string(), value.to_string());
+        if key == "Content-Length" {
+            content_length = Some(value.parse()?);
+        }
+
+        request = request.header(key, value);
     }
 
-    let body;
 
-    if let Some(length) = headers.get("Content-Length") {
-        let mut bytes = vec![0_u8; length.parse().expect("Bad Content Length Header")];
+    if let Some(length) = content_length {
+        let mut bytes = vec![0_u8; length];
 
         buf_reader
-            .read_exact(&mut bytes)
-            .expect("Failed to read content!");
+            .read_exact(&mut bytes)?;
 
-        body = Some(String::from_utf8(bytes).expect("Invalid String!"));
+        Ok(request.body(Some(String::from_utf8(bytes)?))?)
+        
     } else {
-        body = None;
+        Ok(request.body(None)?)
     }
 
-    Ok(Request {
-        method: method,
-        route: request_parts.swap_remove(1).to_string(),
-        version: request_parts.pop().unwrap().to_string(),
-        headers: headers,
-        body: body,
-    })
+    
+    
 }
 
-pub struct Request {
-    pub method: String,
-    pub route: String,
-    pub version: String,
-    pub headers: HashMap<String, String>,
-    pub body: Option<String>,
-}
-
-impl Request {
-    /// Outputs a new owned string of the full request.
-    pub fn as_text(&self) -> String{
-        match &self.body {
-            Some(body) => {
-                let mut r = String::new();
-                r.push_str(&format!("{} {} {}\r\n", self.method, self.route, self.version));
-                for (k , v) in &self.headers {
-                    r.push_str(&format!("{}: {}\r\n", k, v));
-                }
-
-                r.push_str("\r\n");
-                r.push_str(&body);
-
-                r
-            }
-            None => {
-                let mut r = String::new();
-                r.push_str(&format!("{} {} {}\r\n", self.method, self.route, self.version));
-                for (k , v) in &self.headers {
-                    r.push_str(&format!("{}: {}\r\n", k, v));
-                }
-
-                r.push_str("\r\n");
-
-                r
-            }
-        }
+fn parse_version(v: &str) -> Version {
+    match v {
+        "HTTP/0.9" => Version::HTTP_09,
+        "HTTP/1.0" => Version::HTTP_10,
+        "HTTP/1.1" => Version::HTTP_11,
+        "HTTP/2.0" => Version::HTTP_2,
+        "HTTP/3.0" => Version::HTTP_3,
+        &_ => Version::HTTP_11, // Hopefully this is ok to do
     }
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use std::net::TcpListener;
+    // This test requires the tester to make an http request to the test machine
     #[test]
-    fn test_as_text_body() {
-        let mut headers = HashMap::new();
-        headers.insert("Test".into(), "Value".into());
+    fn recieve_requests() {
+        let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
-        let req = Request {
-            method: "POST".to_string(),
-            route: "/".to_string(),
-            version: "HTTP/1".to_string(),
-            headers: headers,
-            body: Some("My body".into()),
-        };
+        let stream = listener.incoming().next().unwrap().unwrap();
 
-        assert_eq!(req.as_text(), "POST / HTTP/1\r\nTest: Value\r\n\r\nMy body");
-    }
+        let request = handle_stream(&stream).unwrap();
 
-    #[test]
-    fn test_as_text() {
-        let mut headers = HashMap::new();
-        headers.insert("Test".into(), "Value".into());
+        println!("{:?} {:?} {:?}", request.method(), request.uri(), request.version());
 
-        let req = Request {
-            method: "POST".to_string(),
-            route: "/".to_string(),
-            version: "HTTP/1".to_string(),
-            headers: headers,
-            body: None,
-        };
+        for (key, value) in request.headers() {
+            println!("{:?}: {:?}", key, value);
+        }
 
-        assert_eq!(req.as_text(), "POST / HTTP/1\r\nTest: Value\r\n\r\n");
-
+        assert_eq!(request.into_body().unwrap(), "Hello Test".to_string());
     }
 }

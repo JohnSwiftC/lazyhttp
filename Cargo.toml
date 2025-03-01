@@ -8,3 +8,6 @@ repository = "https://github.com/JohnSwiftC/lazyhttp"
 readme = "README.md"
 keywords = ["http", "requests", "synchronous"]
 categories = ["network-programming", "web-programming"]
+
+[dependencies]
+http = "1.2.0"
